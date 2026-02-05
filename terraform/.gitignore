@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════════════
+# .gitignore - Terraform & AWS
+# ═══════════════════════════════════════════════════════════════════
+
+# ── TERRAFORM STATE ──────────────────────────────────────────────────
+# Ne JAMAIS commiter les fichiers d'état (contiennent des infos sensibles)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.tfstate.lock.info
+
+# ── TERRAFORM CONFIGURATION ──────────────────────────────────────────
+.terraform/
+.terraform.lock.hcl
+
+# ── VARIABLES & SECRETS ──────────────────────────────────────────────
+# Ne JAMAIS commiter les fichiers contenant des credentials
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ── FICHIERS GÉNÉRÉS ─────────────────────────────────────────────────
+lambda_payload.zip
+*.zip
+plan.out
+crash.log
+crash.*.log
+
+# ── BACKUPS ──────────────────────────────────────────────────────────
+*.bak
+*~
+
+# ── OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── NODE (si vous utilisez des scripts JS/TS) ─────────────────────────
+node_modules/
+package-lock.json
+yarn.lock
+
+# ── PYTHON (si vous utilisez des scripts Python) ──────────────────────
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# ═══════════════════════════════════════════════════════════════════
+# FICHIERS À CONSERVER (exemples)
+# ═══════════════════════════════════════════════════════════════════
+# Décommentez si vous voulez les commiter :
+# !terraform.tfvars.example
+# !lambda_payload.example.zip
