@@ -1,0 +1,115 @@
+# ═══════════════════════════════════════════════════════════════════
+# .dockerignore - InfoLine API
+# ═══════════════════════════════════════════════════════════════════
+# Exclut les fichiers inutiles du contexte de build Docker
+# → Accélère le build
+# → Réduit la taille de l'image
+# → Améliore la sécurité (pas de secrets dans l'image)
+# ═══════════════════════════════════════════════════════════════════
+
+# ── BUILD ARTIFACTS ──────────────────────────────────────────────────
+# Résultats de compilation Maven (seront recréés dans l'image)
+target/
+*.jar
+*.war
+*.ear
+
+# ── CONFIGURATION MAVEN ──────────────────────────────────────────────
+# Wrapper Maven local (utilise celui de l'image maven)
+.mvn/
+mvnw
+mvnw.cmd
+
+# ── IDE ──────────────────────────────────────────────────────────────
+# Fichiers de configuration des IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── GIT ──────────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ── DOCUMENTATION ────────────────────────────────────────────────────
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+docs/
+
+# ── TESTS ────────────────────────────────────────────────────────────
+# Les tests ne sont pas nécessaires dans l'image de production
+src/test/
+*.log
+
+# ── DOCKER ───────────────────────────────────────────────────────────
+# Évite la récursion si .dockerignore est mal configuré
+Dockerfile
+.dockerignore
+docker-compose.yml
+.env
+.env.*
+
+# ── KUBERNETES ───────────────────────────────────────────────────────
+k8s/
+*.yaml
+*.yml
+
+# ── CI/CD ────────────────────────────────────────────────────────────
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+azure-pipelines.yml
+.github/workflows/
+
+# ── SECRETS & CONFIG SENSIBLES ───────────────────────────────────────
+# ⚠️ IMPORTANT : Ne JAMAIS inclure de secrets dans l'image
+*.pem
+*.key
+*.p12
+*.jks
+*.env
+secrets/
+credentials/
+application-prod.properties
+application-local.properties
+
+# ── TEMPORARY FILES ──────────────────────────────────────────────────
+*.tmp
+*.bak
+*.cache
+tmp/
+temp/
+
+# ── OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── NODE (si vous utilisez un frontend intégré) ──────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# ═══════════════════════════════════════════════════════════════════
+# FICHIERS À INCLURE (exceptions)
+# ═══════════════════════════════════════════════════════════════════
+# Si un fichier ci-dessus doit être inclus, utilisez ! :
+# !important.md
+
+# INCLUS AUTOMATIQUEMENT (pas besoin de !) :
+# - pom.xml (nécessaire pour Maven)
+# - src/ (code source)
+# - application.properties (config de base)
