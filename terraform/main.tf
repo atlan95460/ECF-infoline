@@ -7,13 +7,6 @@
 #   - Réseau (VPC, Subnets publics/privés, Internet Gateway)
 #   - Base de données RDS PostgreSQL (optionnel via enable_rds)
 # 
-# CORRECTIONS APPLIQUÉES :
-#   ✅ Provider random ajouté
-#   ✅ local.availability_zones créé
-#   ✅ Variables dupliquées supprimées
-#   ✅ Toutes les valeurs hardcodées remplacées par des variables
-#   ✅ rds-section.tf fusionné dans ce fichier
-#   ✅ Commentaires améliorés
 # ═══════════════════════════════════════════════════════════════════
 
 # ── CONFIGURATION TERRAFORM ──────────────────────────────────────────
@@ -510,7 +503,7 @@ resource "aws_security_group" "rds_sg" {
   count = var.enable_rds ? 1 : 0
 
   name        = "${var.project_name}-rds-sg"
-  description = "Security group pour RDS PostgreSQL - accès depuis le VPC uniquement"
+  description = "Security group pour RDS PostgreSQL - acces depuis le VPC uniquement"
   vpc_id      = aws_vpc.infoline_vpc.id
 
   # Ingress : PostgreSQL depuis le VPC
@@ -684,21 +677,25 @@ resource "aws_db_parameter_group" "infoline_postgres" {
   parameter {
     name  = "shared_buffers"
     value = "{DBInstanceClassMemory/10240}"
+    apply_method = "pending-reboot"
   }
 
   parameter {
     name  = "max_connections"
     value = "100"
+    apply_method = "pending-reboot"
   }
 
   parameter {
     name  = "work_mem"
     value = "4096"
+    apply_method = "pending-reboot"
   }
 
   parameter {
     name  = "log_min_duration_statement"
     value = "1000"
+    apply_method = "pending-reboot"
   }
 
   tags = {

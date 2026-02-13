@@ -1,12 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
 # VARIABLES DE CONFIGURATION - VERSION CORRIGÉE
 # ═══════════════════════════════════════════════════════════════════
-# CORRECTIONS APPLIQUÉES :
-#   ✅ Variable db_instance_class ajoutée
-#   ✅ Version Kubernetes corrigée (1.35 → 1.28)
-#   ✅ Validation regex K8s optimisée
-#   ✅ Toutes les variables RDS consolidées ici
-# ═══════════════════════════════════════════════════════════════════
 
 # ── CONFIGURATION GÉNÉRALE ───────────────────────────────────────────
 variable "region" {
@@ -70,10 +64,10 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Version de Kubernetes pour le cluster EKS"
   type        = string
-  default     = "1.28"  # ✅ CORRIGÉ : 1.35 n'existe pas, changé en 1.28
+  default     = "1.31"  # 
   
   validation {
-    # ✅ CORRIGÉ : Regex améliorée pour accepter 1.26 à 1.99
+    # : Regex améliorée pour accepter 1.26 à 1.99
     condition     = can(regex("^1\\.[2-9][0-9]$", var.kubernetes_version))
     error_message = "La version Kubernetes doit être au format 1.XX (ex: 1.28)."
   }
@@ -235,7 +229,7 @@ variable "db_username" {
   }
 }
 
-# ✅ AJOUTÉ : Variable manquante pour l'instance class RDS
+# Variable pour l'instance class RDS
 variable "db_instance_class" {
   description = "Classe d'instance pour RDS"
   type        = string
