@@ -148,36 +148,32 @@ pipeline {
                     echo "═══════════════════════════════════════════"
                     echo "🏗️ Déplacement dans le dossier du code et compilation..."
 
-                    // Les commandes Maven doivent être DANS le bloc dir()
+                    // Toutes les commandes Maven doivent être DANS le bloc dir()
                     dir('springboot') {
-                    echo "🧹 Nettoyage et compilation..."
-                    sh 'mvn clean compile'
-    
-                    echo ""
-                    echo "🧪 Exécution des tests unitaires..."
-    
-                       sh '''
-                        mvn test \
-                            -Dmaven.test.failure.ignore=false \
-                            -DfailIfNoTests=false
-                    '''
-}
-                            
-                            
-                            
-                    
-                    
-                    echo ""
-                    echo "📦 Création du JAR exécutable..."
-                    
-                    // Package : crée le JAR sans re-exécuter les tests
-                    sh 'mvn package -DskipTests'
-                    
-                    // Vérifie que le JAR a bien été créé
-                    sh '''
-                        echo "✅ Fichier JAR créé :"
-                        ls -lh target/*.jar
-                    '''
+                        echo "🧹 Nettoyage et compilation..."
+                        sh 'mvn clean compile'
+        
+                        echo ""
+                        echo "🧪 Exécution des tests unitaires..."
+        
+                        sh '''
+                            mvn test \
+                                -Dmaven.test.failure.ignore=false \
+                                -DfailIfNoTests=false
+                        '''
+                        
+                        echo ""
+                        echo "📦 Création du JAR exécutable..."
+                        
+                        // Package : crée le JAR sans re-exécuter les tests
+                        sh 'mvn package -DskipTests'
+                        
+                        // Vérifie que le JAR a bien été créé
+                        sh '''
+                            echo "✅ Fichier JAR créé :"
+                            ls -lh target/*.jar
+                        '''
+                    }
                 }
             }
             
@@ -185,11 +181,11 @@ pipeline {
             post {
                 always {
                     // Publie les résultats des tests JUnit
-                    junit testResults: '**/target/surefire-reports/*.xml', 
+                    junit testResults: '**/springboot/target/surefire-reports/*.xml', 
                           allowEmptyResults: true
                     
                     // Archive le JAR créé
-                    archiveArtifacts artifacts: 'target/*.jar',
+                    archiveArtifacts artifacts: 'springboot/target/*.jar',
                                      fingerprint: true,
                                      allowEmptyArchive: false
                 }
@@ -236,7 +232,7 @@ pipeline {
                     echo "🐳 Construction de l'image Docker"
                     echo "═══════════════════════════════════════════"
                     
-                    // Build de l'image avec tags multiple
+                    // Build de l'image avec tags multiple (contexte = springboot/)
                     sh """
                         docker build \
                             --build-arg VERSION=${APP_VERSION} \
@@ -244,7 +240,7 @@ pipeline {
                             --build-arg VCS_REF=${GIT_COMMIT} \
                             -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} \
                             -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:latest \
-                            .
+                            ./springboot
                     """
                     
                     echo ""
