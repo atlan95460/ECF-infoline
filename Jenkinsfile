@@ -142,25 +142,30 @@ pipeline {
         // ──────────────────────────────────────────────────────────────
         stage('🏗️  Maven Build & Test') {
             steps {
-                script {
+                script {    
                     echo "═══════════════════════════════════════════"
                     echo "🏗️  Compilation et tests Maven"
                     echo "═══════════════════════════════════════════"
                     echo "🏗️ Déplacement dans le dossier du code et compilation..."
-                    // On entre dans le dossier spécifique AVANT de lancer Maven
+
+                    // Les commandes Maven doivent être DANS le bloc dir()
                     dir('springboot') {
-                    // Nettoie les builds précédents et compile
-                    sh 'mvn clean compile'}
-                    
+                    echo "🧹 Nettoyage et compilation..."
+                    sh 'mvn clean compile'
+    
                     echo ""
                     echo "🧪 Exécution des tests unitaires..."
-                    
-                    // Exécute les tests avec rapport de couverture
-                    sh '''
+    
+                       sh '''
                         mvn test \
                             -Dmaven.test.failure.ignore=false \
                             -DfailIfNoTests=false
                     '''
+}
+                            
+                            
+                            
+                    
                     
                     echo ""
                     echo "📦 Création du JAR exécutable..."
