@@ -1,0 +1,35 @@
+#Config du .gitignore global
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfvars
+!**/*.tfvars.example
+
+# Secrets
+.env
+*.pem
+*.key
+secrets/
+# Logs
+*.log
+logs/
+
+# Build artifacts généraux
+**/target/
+**/dist/
+**/build/
+**/node_modules/
+EOF
+

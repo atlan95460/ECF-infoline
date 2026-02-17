@@ -1,0 +1,371 @@
+# ═══════════════════════════════════════════════════════════════════
+# KUBERNETES DEPLOYMENT - InfoLine API (Java 17 + Spring Boot)
+# ═══════════════════════════════════════════════════════════════════
+# Ce manifeste déploie l'application Spring Boot sur Kubernetes avec :
+#   - 2 réplicas pour haute disponibilité
+#   - Health checks (liveness + readiness probes)
+#   - Resources limits (CPU + Memory)
+#   - Rolling update strategy
+#   - LoadBalancer service
+# ═══════════════════════════════════════════════════════════════════
+
+---
+# ── NAMESPACE ────────────────────────────────────────────────────────
+# Isolation logique des ressources InfoLine
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infoline
+  labels:
+    name: infoline
+    environment: production
+
+---
+# ── DEPLOYMENT ───────────────────────────────────────────────────────
+# Gère le cycle de vie des pods de l'application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infoline-api
+  namespace: infoline
+  labels:
+    app: infoline-api
+    version: v1
+    tier: backend
+  annotations:
+    description: "InfoLine API - Service REST Spring Boot"
+spec:
+  # ── RÉPLICATION ────────────────────────────────────────────────────
+  # 2 réplicas pour haute disponibilité et load balancing
+  replicas: 2
+  
+  # ── SÉLECTEUR ──────────────────────────────────────────────────────
+  # Identifie les pods gérés par ce deployment
+  selector:
+    matchLabels:
+      app: infoline-api
+  
+  # ── STRATÉGIE DE MISE À JOUR ───────────────────────────────────────
+  # Rolling update : met à jour les pods un par un sans downtime
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Peut créer 1 pod supplémentaire pendant l'update
+      maxUnavailable: 0  # Garantit zéro downtime (toujours 2 pods actifs)
+  
+  # ── TEMPLATE POD ───────────────────────────────────────────────────
+  template:
+    metadata:
+      labels:
+        app: infoline-api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    
+    spec:
+      # ── CONTENEURS ───────────────────────────────────────────────────
+      containers:
+      - name: infoline-api
+        # Image Docker (sera remplacée par Jenkins avec le bon tag)
+        image: REGISTRY/infoline-api:IMAGE_TAG
+        imagePullPolicy: Always  # Force le pull à chaque déploiement
+        
+        # ── PORTS ──────────────────────────────────────────────────────
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        
+        # ── VARIABLES D'ENVIRONNEMENT ──────────────────────────────────
+        env:
+        # Configuration Spring Boot
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        
+        - name: JAVA_OPTS
+          value: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        
+        # Configuration de la base de données (optionnel)
+        # Décommentez si RDS est activé
+        # - name: DB_HOST
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: infoline-db-credentials
+        #       key: host
+        # 
+        # - name: DB_PORT
+        #   value: "5432"
+        # 
+        # - name: DB_NAME
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: infoline-db-credentials
+        #       key: dbname
+        # 
+        # - name: DB_USERNAME
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: infoline-db-credentials
+        #       key: username
+        # 
+        # - name: DB_PASSWORD
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: infoline-db-credentials
+        #       key: password
+        
+        # ── RESOURCES LIMITS ───────────────────────────────────────────
+        # Garantit les performances et protège le cluster
+        resources:
+          requests:
+            # Minimum garanti par pod
+            cpu: "500m"      # 0.5 CPU core
+            memory: "512Mi"  # 512 MB RAM
+          limits:
+            # Maximum autorisé par pod
+            cpu: "1000m"     # 1 CPU core
+            memory: "1Gi"    # 1 GB RAM
+        
+        # ── LIVENESS PROBE ─────────────────────────────────────────────
+        # Kubernetes redémarre le pod si cette probe échoue
+        # Vérifie que l'application est vivante
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60  # Attend 60s après le démarrage
+          periodSeconds: 15        # Vérifie toutes les 15 secondes
+          timeoutSeconds: 5        # Timeout après 5 secondes
+          successThreshold: 1      # 1 succès = healthy
+          failureThreshold: 3      # 3 échecs = restart pod
+        
+        # ── READINESS PROBE ────────────────────────────────────────────
+        # Kubernetes retire le pod du LoadBalancer si cette probe échoue
+        # Vérifie que l'application est prête à recevoir du trafic
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30  # Attend 30s après le démarrage
+          periodSeconds: 10        # Vérifie toutes les 10 secondes
+          timeoutSeconds: 5        # Timeout après 5 secondes
+          successThreshold: 1      # 1 succès = ready
+          failureThreshold: 3      # 3 échecs = not ready
+        
+        # ── STARTUP PROBE ──────────────────────────────────────────────
+        # Désactive les autres probes pendant le démarrage
+        # Utile pour les applications Java qui démarrent lentement
+        startupProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 12  # 12 * 5s = 60s max pour démarrer
+        
+        # ── VOLUMES (optionnel) ────────────────────────────────────────
+        # Pour les logs ou fichiers temporaires
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: logs
+          mountPath: /app/logs
+      
+      # ── VOLUMES DEFINITION ─────────────────────────────────────────────
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      
+      # ── SECURITY CONTEXT ───────────────────────────────────────────────
+      # Exécute le pod avec un utilisateur non-root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      
+      # ── RESTART POLICY ─────────────────────────────────────────────────
+      restartPolicy: Always
+      
+      # ── DNS POLICY ─────────────────────────────────────────────────────
+      dnsPolicy: ClusterFirst
+
+---
+# ── SERVICE ──────────────────────────────────────────────────────────
+# Expose l'application via un LoadBalancer externe
+apiVersion: v1
+kind: Service
+metadata:
+  name: infoline-api
+  namespace: infoline
+  labels:
+    app: infoline-api
+  annotations:
+    # Annotations AWS pour le LoadBalancer (EKS)
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # Network LoadBalancer
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/api/v1/health"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "30"
+spec:
+  # ── TYPE DE SERVICE ────────────────────────────────────────────────
+  # LoadBalancer : crée un load balancer externe (AWS NLB/ALB)
+  type: LoadBalancer
+  
+  # ── SÉLECTEUR ──────────────────────────────────────────────────────
+  # Route le trafic vers les pods avec le label app=infoline-api
+  selector:
+    app: infoline-api
+  
+  # ── PORTS ──────────────────────────────────────────────────────────
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80          # Port externe du LoadBalancer
+    targetPort: 8080  # Port du conteneur
+  
+  # ── SESSION AFFINITY ───────────────────────────────────────────────
+  # Maintient les sessions sur le même pod (optionnel)
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 heures
+
+---
+# ── HORIZONTAL POD AUTOSCALER ────────────────────────────────────────
+# Scale automatiquement le nombre de pods en fonction de la charge
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: infoline-api-hpa
+  namespace: infoline
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: infoline-api
+  
+  # ── CONFIGURATION SCALING ──────────────────────────────────────────
+  minReplicas: 2   # Minimum 2 pods (haute disponibilité)
+  maxReplicas: 10  # Maximum 10 pods
+  
+  # ── MÉTRIQUES ──────────────────────────────────────────────────────
+  metrics:
+  # Scale basé sur l'utilisation CPU
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # Scale up si CPU > 70%
+  
+  # Scale basé sur l'utilisation mémoire
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80  # Scale up si mémoire > 80%
+  
+  # ── COMPORTEMENT SCALING ───────────────────────────────────────────
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Attend 5 min avant de scaler down
+      policies:
+      - type: Percent
+        value: 50         # Réduit max 50% des pods
+        periodSeconds: 60 # Par période de 60s
+    scaleUp:
+      stabilizationWindowSeconds: 60   # Scale up après 60s
+      policies:
+      - type: Percent
+        value: 100        # Double max le nombre de pods
+        periodSeconds: 30 # Par période de 30s
+
+---
+# ── POD DISRUPTION BUDGET ────────────────────────────────────────────
+# Garantit un minimum de pods disponibles pendant les maintenances
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: infoline-api-pdb
+  namespace: infoline
+spec:
+  minAvailable: 1  # Toujours au moins 1 pod disponible
+  selector:
+    matchLabels:
+      app: infoline-api
+
+---
+# ── CONFIGMAP (OPTIONNEL) ────────────────────────────────────────────
+# Configuration externalisée de l'application
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infoline-api-config
+  namespace: infoline
+data:
+  application.properties: |
+    # Configuration Spring Boot
+    spring.application.name=infoline-api
+    server.port=8080
+    
+    # Logs
+    logging.level.root=INFO
+    logging.level.com.infoline=DEBUG
+    
+    # Actuator
+    management.endpoints.web.exposure.include=health,info,metrics,prometheus
+    management.endpoint.health.show-details=always
+
+---
+# ── SECRET (EXEMPLE - NE PAS COMMITTER) ──────────────────────────────
+# Pour stocker les credentials de la base de données
+# IMPORTANT : À créer via kubectl ou externe (AWS Secrets Manager)
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: infoline-db-credentials
+#   namespace: infoline
+# type: Opaque
+# data:
+#   # Valeurs encodées en base64
+#   host: <base64-encoded-rds-endpoint>
+#   port: NTQzMg==  # 5432
+#   dbname: <base64-encoded-dbname>
+#   username: <base64-encoded-username>
+#   password: <base64-encoded-password>
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMANDES UTILES
+# ═══════════════════════════════════════════════════════════════════
+#
+# Déployer :
+#   kubectl apply -f deployment.yaml
+#
+# Vérifier le déploiement :
+#   kubectl get all -n infoline
+#   kubectl get pods -n infoline -w
+#
+# Voir les logs :
+#   kubectl logs -f deployment/infoline-api -n infoline
+#
+# Obtenir l'URL du LoadBalancer :
+#   kubectl get svc infoline-api -n infoline
+#
+# Scaler manuellement :
+#   kubectl scale deployment infoline-api --replicas=5 -n infoline
+#
+# Rollback :
+#   kubectl rollout undo deployment/infoline-api -n infoline
+#
+# Port-forward local :
+#   kubectl port-forward svc/infoline-api 8080:80 -n infoline
+#
+# ═══════════════════════════════════════════════════════════════════

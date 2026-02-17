@@ -1,0 +1,23 @@
+yamlversion: '3.8'
+
+services:
+  backend:
+    build: ./springboot
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    networks:
+      - infoline-network
+      frontend:
+    build: ./angular
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - infoline-network
+
+networks:
+  infoline-network:
+    driver: bridge
