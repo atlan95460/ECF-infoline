@@ -146,9 +146,11 @@ pipeline {
                     echo "═══════════════════════════════════════════"
                     echo "🏗️  Compilation et tests Maven"
                     echo "═══════════════════════════════════════════"
-                    
+                    echo "🏗️ Déplacement dans le dossier du code et compilation..."
+                    // On entre dans le dossier spécifique AVANT de lancer Maven
+                    dir('springboot') {
                     // Nettoie les builds précédents et compile
-                    sh 'mvn clean compile'
+                    sh 'mvn clean compile'}
                     
                     echo ""
                     echo "🧪 Exécution des tests unitaires..."
