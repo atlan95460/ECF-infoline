@@ -24,7 +24,7 @@ pipeline {
         // Java & Maven
         JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
         MAVEN_HOME = '/opt/maven'
-        MAVEN_OPTS = '-Xmx1024m -XX:MaxPermSize=256m'
+        MAVEN_OPTS = '-Xmx1024m '
         
         // Docker
         DOCKER_IMAGE = "${APP_NAME}"
