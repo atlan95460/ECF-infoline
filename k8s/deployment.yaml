@@ -312,10 +312,10 @@ metadata:
   namespace: infoline
 data:
   application.properties: |
-  spring.application.name=infoline-api
-    # Empêche l'application de crasher si la DB est absente
+    spring.application.name=infoline-api
+   # Empêche l'application de crasher si la DB est absente
     spring.datasource.continue-on-error=true
-    # Désactive le check de santé de la DB pour Actuator
+   # Désactive le check de santé de la DB pour Actuator
     management.health.db.enabled=false
     management.endpoint.health.show-details=always
   
