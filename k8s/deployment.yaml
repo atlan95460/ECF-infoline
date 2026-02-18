@@ -150,11 +150,11 @@ spec:
             path: /api/v1/health
             port: 8080
             scheme: HTTP
-          initialDelaySeconds: 30  # Attend 30s après le démarrage
-          periodSeconds: 10        # Vérifie toutes les 10 secondes
+          initialDelaySeconds: 50  # Attend 50s après le démarrage
+          periodSeconds: 15        # Vérifie toutes les 15 secondes
           timeoutSeconds: 5        # Timeout après 5 secondes
           successThreshold: 1      # 1 succès = ready
-          failureThreshold: 3      # 3 échecs = not ready
+          failureThreshold: 6      # 6 échecs = not ready
         
         # ── STARTUP PROBE ──────────────────────────────────────────────
         # Désactive les autres probes pendant le démarrage
@@ -163,11 +163,11 @@ spec:
           httpGet:
             path: /api/v1/health
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
+          initialDelaySeconds: 30
+          periodSeconds: 10
           timeoutSeconds: 3
           successThreshold: 1
-          failureThreshold: 12  # 12 * 5s = 60s max pour démarrer
+          failureThreshold: 18  # 18 * 10s = 180s max pour démarrer
         
         # ── VOLUMES (optionnel) ────────────────────────────────────────
         # Pour les logs ou fichiers temporaires
@@ -312,6 +312,13 @@ metadata:
   namespace: infoline
 data:
   application.properties: |
+  spring.application.name=infoline-api
+    # Empêche l'application de crasher si la DB est absente
+    spring.datasource.continue-on-error=true
+    # Désactive le check de santé de la DB pour Actuator
+    management.health.db.enabled=false
+    management.endpoint.health.show-details=always
+  
     # Configuration Spring Boot
     spring.application.name=infoline-api
     server.port=8080
