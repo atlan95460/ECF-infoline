@@ -186,10 +186,7 @@ spec:
       
       # ── SECURITY CONTEXT ───────────────────────────────────────────────
       # Exécute le pod avec un utilisateur non-root
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1001
-        fsGroup: 1001
+     
       
       # ── RESTART POLICY ─────────────────────────────────────────────────
       restartPolicy: Always
