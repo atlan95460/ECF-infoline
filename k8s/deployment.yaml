@@ -69,7 +69,7 @@ spec:
       containers:
       - name: infoline-api
         # Image Docker (sera remplacée par Jenkins avec le bon tag)
-        image: REGISTRY/infoline-api:IMAGE_TAG
+        image: docker.io/lotfidevops/infoline-api:latest
         imagePullPolicy: Always  # Force le pull à chaque déploiement
         
         # ── PORTS ──────────────────────────────────────────────────────
