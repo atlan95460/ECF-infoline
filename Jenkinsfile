@@ -27,7 +27,7 @@ pipeline {
         MAVEN_OPTS = '-Xmx1024m '
         
         // Docker
-        DOCKER_IMAGE = "lotfidevops/${APP_NAME}" //chemin dans dockerhub
+        DOCKER_IMAGE = "${APP_NAME}"
         DOCKER_REGISTRY = 'docker.io'  // Docker Hub
         DOCKER_REGISTRY_CREDENTIALS = 'dockerhub-credentials'  // ID dans Jenkins Credentials
         DOCKER_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT?.take(8)}"
@@ -35,11 +35,12 @@ pipeline {
         // Kubernetes
         K8S_NAMESPACE = 'infoline'
         K8S_DEPLOYMENT = "${APP_NAME}"
-        KUBECONFIG_CREDENTIALS = 'kubeconfig-eks'  // ID dans Jenkins Credentials
+        EKS_CLUSTER_NAME = 'infoline-cluster'  // Nom de votre cluster EKS
+        KUBECONFIG_CREDENTIALS = 'kubeconfig-eks'  // ID dans Jenkins Credentials (non utilisé avec AWS CLI)
         
-        // AWS (si vous utilisez ECR au lieu de Docker Hub)
+        // AWS
         AWS_REGION = 'eu-west-3'
-        AWS_ACCOUNT_ID = credentials('aws-credentials-ecf')  // Optionnel
+        AWS_ACCOUNT_ID = credentials('aws-account-id')  // Optionnel
         
         // SonarQube (optionnel)
         SONAR_HOST_URL = 'http://sonarqube:9000'
@@ -191,9 +192,8 @@ pipeline {
                 }
             }
         }
-
-    /*
-       // ──────────────────────────────────────────────────────────────
+/*
+        // ──────────────────────────────────────────────────────────────
         // STAGE 4 : ANALYSE DE CODE (SONARQUBE - OPTIONNEL)
         // ──────────────────────────────────────────────────────────────
         stage('🔍 Analyse SonarQube') {
@@ -203,7 +203,7 @@ pipeline {
             }
             steps {
                 script {
-                   // echo "═══════════════════════════════════════════"
+                    echo "═══════════════════════════════════════════"
                     echo "🔍 Analyse de code avec SonarQube"
                     echo "═══════════════════════════════════════════"
                     
@@ -222,7 +222,6 @@ pipeline {
                 }
             }
         }
-
 */
         // ──────────────────────────────────────────────────────────────
         // STAGE 5 : BUILD IMAGE DOCKER
@@ -233,20 +232,18 @@ pipeline {
                     echo "═══════════════════════════════════════════"
                     echo "🐳 Construction de l'image Docker"
                     echo "═══════════════════════════════════════════"
-                    // On entre dans le dossier pour que Docker trouve le pom.xml et src/
-                    dir('springboot') {
-                        sh """
-                    # Build de l'image avec tags multiple (contexte = springboot/)
+                    
+                    // Build de l'image avec tags multiple (contexte = springboot/)
+                    sh """
                         docker build \
                             --build-arg VERSION=${APP_VERSION} \
                             --build-arg BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
                             --build-arg VCS_REF=${GIT_COMMIT} \
                             -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} \
                             -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:latest \
-                            .
+                            ./springboot
                     """
-                } 
-                  
+                    
                     echo ""
                     echo "✅ Image Docker créée :"
                     sh "docker images | grep ${DOCKER_IMAGE}"
@@ -345,74 +342,91 @@ pipeline {
                     echo "☸️  Déploiement sur Kubernetes (EKS)"
                     echo "═══════════════════════════════════════════"
                     
-                    // Configure kubectl avec kubeconfig depuis Jenkins Credentials
-                    withCredentials([file(
-                        credentialsId: "${KUBECONFIG_CREDENTIALS}",
-                        variable: 'KUBECONFIG_FILE'
-                    )]) {
+                    // ÉTAPE 1 : Configurer les credentials AWS
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
-                            # Créer le répertoire .kube si inexistant
-                            mkdir -p ~/.kube
+                            echo "🔐 Configuration des credentials AWS..."
                             
-                            # Copier le kubeconfig
-                            cp $KUBECONFIG_FILE ~/.kube/config
-                            chmod 600 ~/.kube/config
+                            # Configure AWS CLI
+                            aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                            aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                            aws configure set region ${AWS_REGION}
+                            aws configure set output json
                             
-                            echo "✅ kubectl configuré"
-                            kubectl version --client
+                            echo "✅ AWS CLI configuré"
+                            aws sts get-caller-identity
                         '''
-                    }
-                    
-                    // Créer le namespace s'il n'existe pas
-                    sh """
-                        echo ""
-                        echo "📦 Vérification du namespace ${K8S_NAMESPACE}..."
-                        kubectl get namespace ${K8S_NAMESPACE} || \
-                        kubectl create namespace ${K8S_NAMESPACE}
-                    """
-                    
-                    // Remplacer le tag de l'image dans le deployment
-                    sh """
-                        echo ""
-                        echo "🔄 Mise à jour du deployment..."
                         
-                        # Remplace IMAGE_TAG dans deployment.yaml
-                        sed -i 's|IMAGE_TAG|${DOCKER_TAG}|g' k8s/deployment.yaml
+                        // ÉTAPE 2 : Mettre à jour kubeconfig pour EKS
+                        sh """
+                            echo ""
+                            echo "📦 Mise à jour du kubeconfig pour EKS..."
+                            echo "Cluster: ${EKS_CLUSTER_NAME}"
+                            echo "Région: ${AWS_REGION}"
+                            
+                            # Mettre à jour kubeconfig avec aws eks
+                            aws eks update-kubeconfig \
+                                --name ${EKS_CLUSTER_NAME} \
+                                --region ${AWS_REGION}
+                            
+                            echo "✅ Kubeconfig mis à jour"
+                            kubectl cluster-info
+                        """
                         
-                        # Remplace REGISTRY dans deployment.yaml
-                        sed -i 's|REGISTRY|${DOCKER_REGISTRY}|g' k8s/deployment.yaml
-                    """
-                    
-                    // Appliquer les manifestes Kubernetes
-                    sh """
-                        echo ""
-                        echo "⚙️  Application des manifestes K8s..."
-                        kubectl apply -f k8s/ -n ${K8S_NAMESPACE}
-                    """
-                    
-                    // Attendre que le rollout soit terminé
-                    sh """
-                        echo ""
-                        echo "⏳ Attente du rollout (timeout 3 minutes)..."
-                        kubectl rollout status deployment/${K8S_DEPLOYMENT} \
-                            -n ${K8S_NAMESPACE} \
-                            --timeout=180s
-                    """
-                    
-                    // Afficher l'état du déploiement
-                    sh """
-                        echo ""
-                        echo "📊 État du déploiement :"
-                        kubectl get deployment ${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE}
+                        // ÉTAPE 3 : Créer le namespace s'il n'existe pas
+                        sh """
+                            echo ""
+                            echo "📦 Vérification du namespace ${K8S_NAMESPACE}..."
+                            kubectl get namespace ${K8S_NAMESPACE} 2>/dev/null || \
+                            kubectl create namespace ${K8S_NAMESPACE}
+                        """
                         
-                        echo ""
-                        echo "📊 Pods en cours d'exécution :"
-                        kubectl get pods -l app=${APP_NAME} -n ${K8S_NAMESPACE}
+                        // ÉTAPE 4 : Remplacer le tag de l'image dans le deployment
+                        sh """
+                            echo ""
+                            echo "🔄 Mise à jour du deployment..."
+                            
+                            # Remplace IMAGE_TAG dans deployment.yaml
+                            sed -i 's|IMAGE_TAG|${DOCKER_TAG}|g' k8s/deployment.yaml
+                            
+                            # Remplace REGISTRY dans deployment.yaml
+                            sed -i 's|REGISTRY|${DOCKER_REGISTRY}|g' k8s/deployment.yaml
+                        """
                         
-                        echo ""
-                        echo "📊 Services exposés :"
-                        kubectl get svc ${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE}
-                    """
+                        // ÉTAPE 5 : Appliquer les manifestes Kubernetes
+                        sh """
+                            echo ""
+                            echo "⚙️  Application des manifestes K8s..."
+                            kubectl apply -f k8s/ -n ${K8S_NAMESPACE}
+                        """
+                        
+                        // ÉTAPE 6 : Attendre que le rollout soit terminé
+                        sh """
+                            echo ""
+                            echo "⏳ Attente du rollout (timeout 3 minutes)..."
+                            kubectl rollout status deployment/${K8S_DEPLOYMENT} \
+                                -n ${K8S_NAMESPACE} \
+                                --timeout=180s
+                        """
+                        
+                        // ÉTAPE 7 : Afficher l'état du déploiement
+                        sh """
+                            echo ""
+                            echo "📊 État du déploiement :"
+                            kubectl get deployment ${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE}
+                            
+                            echo ""
+                            echo "📊 Pods en cours d'exécution :"
+                            kubectl get pods -l app=${APP_NAME} -n ${K8S_NAMESPACE}
+                            
+                            echo ""
+                            echo "📊 Services exposés :"
+                            kubectl get svc ${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE}
+                        """
+                    } // Fin du bloc withCredentials
                 }
             }
         }
