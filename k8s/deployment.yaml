@@ -37,7 +37,7 @@ metadata:
 spec:
   # ── RÉPLICATION ────────────────────────────────────────────────────
   # 2 réplicas pour haute disponibilité et load balancing
-  replicas: 2
+  replicas: 1  #2 normalement mais 1 pour les limites aws free
   
   # ── SÉLECTEUR ──────────────────────────────────────────────────────
   # Identifie les pods gérés par ce deployment
@@ -126,7 +126,7 @@ spec:
           limits:
             # Maximum autorisé par pod
             cpu: "500m"     # 1 CPU core
-            memory: "512Gi"    # 0,5 GB RAM
+            memory: "512Mi"    # 0,5 GB RAM
         
         # ── LIVENESS PROBE ─────────────────────────────────────────────
         # Kubernetes redémarre le pod si cette probe échoue
