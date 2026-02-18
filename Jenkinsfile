@@ -27,7 +27,7 @@ pipeline {
         MAVEN_OPTS = '-Xmx1024m '
         
         // Docker
-        DOCKER_IMAGE = "${APP_NAME}"
+        DOCKER_IMAGE = "lotfidevops/${APP_NAME}" //chemin dans dockerhub
         DOCKER_REGISTRY = 'docker.io'  // Docker Hub
         DOCKER_REGISTRY_CREDENTIALS = 'dockerhub-credentials'  // ID dans Jenkins Credentials
         DOCKER_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT?.take(8)}"
