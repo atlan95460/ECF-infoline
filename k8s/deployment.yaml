@@ -121,12 +121,12 @@ spec:
         resources:
           requests:
             # Minimum garanti par pod
-            cpu: "500m"      # 0.5 CPU core
-            memory: "512Mi"  # 512 MB RAM
+            cpu: "100m"      # 0.1 CPU core
+            memory: "256Mi"  # 256 MB RAM
           limits:
             # Maximum autorisé par pod
-            cpu: "1000m"     # 1 CPU core
-            memory: "1Gi"    # 1 GB RAM
+            cpu: "500m"     # 1 CPU core
+            memory: "512Gi"    # 0,5 GB RAM
         
         # ── LIVENESS PROBE ─────────────────────────────────────────────
         # Kubernetes redémarre le pod si cette probe échoue
@@ -252,7 +252,7 @@ spec:
     name: infoline-api
   
   # ── CONFIGURATION SCALING ──────────────────────────────────────────
-  minReplicas: 2   # Minimum 2 pods (haute disponibilité)
+  minReplicas: 1   # Minimum 2 pods (haute disponibilité) mais pour le cour et aws student, on en met qu'un
   maxReplicas: 10  # Maximum 10 pods
   
   # ── MÉTRIQUES ──────────────────────────────────────────────────────
