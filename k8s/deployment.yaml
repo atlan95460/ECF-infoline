@@ -313,23 +313,13 @@ metadata:
 data:
   application.properties: |
     spring.application.name=infoline-api
-   # Empêche l'application de crasher si la DB est absente
     spring.datasource.continue-on-error=true
-   # Désactive le check de santé de la DB pour Actuator
     management.health.db.enabled=false
     management.endpoint.health.show-details=always
-  
-    # Configuration Spring Boot
-    spring.application.name=infoline-api
     server.port=8080
-    
-    # Logs
     logging.level.root=INFO
     logging.level.com.infoline=DEBUG
-    
-    # Actuator
     management.endpoints.web.exposure.include=health,info,metrics,prometheus
-    management.endpoint.health.show-details=always
 
 ---
 # ── SECRET (EXEMPLE - NE PAS COMMITTER) ──────────────────────────────
