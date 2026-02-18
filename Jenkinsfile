@@ -359,7 +359,7 @@ pipeline {
                             chmod 600 ~/.kube/config
                             
                             echo "✅ kubectl configuré"
-                            kubectl version --short
+                            kubectl version --client
                         '''
                     }
                     
