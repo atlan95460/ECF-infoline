@@ -39,7 +39,7 @@ pipeline {
         
         // AWS (si vous utilisez ECR au lieu de Docker Hub)
         AWS_REGION = 'eu-west-3'
-        AWS_ACCOUNT_ID = credentials('aws-account-id')  // Optionnel
+        AWS_ACCOUNT_ID = credentials('aws-credentials-ecf')  // Optionnel
         
         // SonarQube (optionnel)
         SONAR_HOST_URL = 'http://sonarqube:9000'
