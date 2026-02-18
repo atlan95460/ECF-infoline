@@ -167,7 +167,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 3
           successThreshold: 1
-          failureThreshold: 18  # 18 * 10s = 180s max pour démarrer
+          failureThreshold: 35  # 18 * 10s = 180s max pour démarrer
         
         # ── VOLUMES (optionnel) ────────────────────────────────────────
         # Pour les logs ou fichiers temporaires
@@ -186,7 +186,10 @@ spec:
       
       # ── SECURITY CONTEXT ───────────────────────────────────────────────
       # Exécute le pod avec un utilisateur non-root
-     
+      # securityContext:
+      # runAsNonRoot: true
+       # runAsUser: 1001
+       # fsGroup: 1001
       
       # ── RESTART POLICY ─────────────────────────────────────────────────
       restartPolicy: Always
