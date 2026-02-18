@@ -233,18 +233,20 @@ pipeline {
                     echo "═══════════════════════════════════════════"
                     echo "🐳 Construction de l'image Docker"
                     echo "═══════════════════════════════════════════"
-                    
-                    // Build de l'image avec tags multiple (contexte = springboot/)
-                    sh """
+                    // On entre dans le dossier pour que Docker trouve le pom.xml et src/
+                    dir('springboot') {
+                        sh """
+                    # Build de l'image avec tags multiple (contexte = springboot/)
                         docker build \
                             --build-arg VERSION=${APP_VERSION} \
                             --build-arg BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
                             --build-arg VCS_REF=${GIT_COMMIT} \
                             -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG} \
                             -t ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:latest \
-                            ./springboot
+                            .
                     """
-                    
+                } 
+                  
                     echo ""
                     echo "✅ Image Docker créée :"
                     sh "docker images | grep ${DOCKER_IMAGE}"
