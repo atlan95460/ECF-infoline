@@ -39,7 +39,7 @@ COPY . .
 #   - Minification
 #   - Tree shaking
 #   - Optimisation des bundles
-RUN npm run build -- \
+RUN npx ng build -- \
     --configuration=production \
     --optimization=true \
     --build-optimizer=true \
