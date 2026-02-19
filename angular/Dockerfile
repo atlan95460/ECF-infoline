@@ -39,16 +39,7 @@ COPY . .
 #   - Minification
 #   - Tree shaking
 #   - Optimisation des bundles
-RUN npm run build -- \
-    --configuration=production \
-    --optimization=true \
-    --build-optimizer=true \
-    --aot=true \
-    --vendor-chunk=true \
-    --common-chunk=true \
-    --named-chunks=false \
-    --output-hashing=all \
-    --source-map=false
+RUN npm run build
 
 # ────────────────────────────────────────────────────────────────────
 # ÉTAPE 2 : PRODUCTION (Nginx Alpine - ~15MB)
