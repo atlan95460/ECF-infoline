@@ -17,7 +17,7 @@
 FROM node:18-alpine AS build
 
 # Variables d'environnement pour optimiser le build
-ENV NODE_ENV=production
+#ENV NODE_ENV=production
 ENV NG_CLI_ANALYTICS=false
 
 WORKDIR /app
@@ -47,7 +47,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # ── Métadonnées ─────────────────────────────────────────────────────
-LABEL maintainer="your-email@example.com"
+LABEL maintainer="lotfi.benhamou@gmail.com"
 LABEL description="Angular Hello World - Ultra optimisé pour t3.small"
 
 # ── Supprimer la config nginx par défaut ───────────────────────────
