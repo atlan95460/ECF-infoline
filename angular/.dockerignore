@@ -1,0 +1,10 @@
+# Ne pas envoyer à Docker
+node_modules
+dist
+.git
+.gitignore
+.dockerignore
+.circleci
+README.md
+*.yaml
+Makefile.angular

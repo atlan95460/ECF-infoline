@@ -1,0 +1,235 @@
+# ═══════════════════════════════════════════════════════════════════
+# KUBERNETES DEPLOYMENT - Angular Hello World
+# ═══════════════════════════════════════════════════════════════════
+# Optimisé pour AWS t3.small :
+#   - 2 vCPU, 2 GB RAM
+#   - Ressources minimales
+#   - Pas de LoadBalancer (coûteux) → NodePort ou Ingress
+#   - HPA désactivé (pas nécessaire pour hello world)
+# ═══════════════════════════════════════════════════════════════════
+
+---
+# ── NAMESPACE ────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infoline
+  labels:
+    name: infoline
+
+---
+# ── DEPLOYMENT ───────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: angular-frontend
+  namespace: infoline
+  labels:
+    app: angular-frontend
+    tier: frontend
+spec:
+  # ── RÉPLICATION ────────────────────────────────────────────────────
+  # 1 seul replica pour économiser les ressources sur t3.small
+  replicas: 1
+  
+  selector:
+    matchLabels:
+      app: angular-frontend
+  
+  # ── STRATÉGIE DE MISE À JOUR ───────────────────────────────────────
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Peut créer 1 pod temporaire
+      maxUnavailable: 0  # Zéro downtime
+  
+  template:
+    metadata:
+      labels:
+        app: angular-frontend
+        version: v1
+    
+    spec:
+      containers:
+      - name: angular-app
+        image: lotfidevops/angular-hello-world:latest
+        imagePullPolicy: Always
+        
+        # ── PORTS ──────────────────────────────────────────────────
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        
+        # ── RESOURCES ULTRA-LÉGERS ─────────────────────────────────
+        # Angular statique = très peu de ressources
+        resources:
+          requests:
+            # Ce que le pod demande (garanti)
+            cpu: "25m"      # 0.025 CPU (2.5% d'un cœur)
+            memory: "32Mi"  # 32 MB RAM
+          limits:
+            # Maximum autorisé
+            cpu: "100m"     # 0.1 CPU (10% d'un cœur)
+            memory: "64Mi"  # 64 MB RAM max
+        
+        # ── LIVENESS PROBE ─────────────────────────────────────────
+        # Kubernetes redémarre le pod si ça échoue
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10  # Attend 10s après le start
+          periodSeconds: 30        # Vérifie toutes les 30s
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3      # Redémarre après 3 échecs
+        
+        # ── READINESS PROBE ────────────────────────────────────────
+        # Kubernetes retire du service si ça échoue
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # ── VARIABLES D'ENVIRONNEMENT (optionnel) ──────────────────
+        env:
+        - name: NGINX_WORKER_PROCESSES
+          value: "1"
+        - name: NGINX_WORKER_CONNECTIONS
+          value: "512"
+
+      # ── RESTART POLICY ─────────────────────────────────────────────
+      restartPolicy: Always
+      
+      # ── DNS POLICY ─────────────────────────────────────────────────
+      dnsPolicy: ClusterFirst
+
+---
+# ── SERVICE (NODEPORT au lieu de LoadBalancer) ──────────────────────
+# LoadBalancer AWS = $18/mois par LB
+# NodePort = gratuit, accessible via IP:port du node
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular-service
+  namespace: infoline
+  labels:
+    app: angular-frontend
+spec:
+  # ── TYPE NODEPORT (économique) ─────────────────────────────────────
+  # Accessible via <node-ip>:<nodePort>
+  # Pour production : utilisez un Ingress (voir ci-dessous)
+  type: NodePort
+  
+  selector:
+    app: angular-frontend
+  
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80          # Port interne du cluster
+    targetPort: 80    # Port du conteneur
+    nodePort: 30080   # Port externe (30000-32767)
+
+---
+# ── ALTERNATIVE : INGRESS (RECOMMANDÉ pour production) ───────────────
+# Utilise un seul LoadBalancer pour plusieurs services
+# Économie : 1 LB au lieu de N LB
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: angular-ingress
+  namespace: infoline
+  annotations:
+    # Pour AWS ALB (Application Load Balancer)
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    
+    # SSL optionnel (Certificate Manager)
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    # alb.ingress.kubernetes.io/ssl-redirect: '443'
+spec:
+  rules:
+  - host: angular.votredomaine.com  # Remplacez par votre domaine
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: angular-service
+            port:
+              number: 80
+
+---
+# ═══════════════════════════════════════════════════════════════════
+# OPTION BUDGET ULTRA-SERRÉ : Service ClusterIP + Port-Forward
+# ═══════════════════════════════════════════════════════════════════
+# Si vous voulez juste tester localement sans LoadBalancer :
+#
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: angular-service
+#   namespace: infoline
+# spec:
+#   type: ClusterIP  # Pas d'accès externe
+#   selector:
+#     app: angular-frontend
+#   ports:
+#   - port: 80
+#     targetPort: 80
+#
+# Puis sur votre machine :
+#   kubectl port-forward svc/angular-service 8080:80 -n infoline
+#   → Accessible sur http://localhost:8080
+# ═══════════════════════════════════════════════════════════════════
+
+---
+# ── CONFIGMAP : Configuration nginx externalisée (optionnel) ─────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: infoline
+data:
+  nginx.conf: |
+    # Contenu du nginx.conf ici si besoin de le modifier
+    # (sinon utilisez celui dans l'image)
+
+# ═══════════════════════════════════════════════════════════════════
+# COMMANDES UTILES
+# ═══════════════════════════════════════════════════════════════════
+#
+# Déployer :
+#   kubectl apply -f angular-deploy.yaml
+#
+# Vérifier :
+#   kubectl get all -n infoline
+#   kubectl get pods -n infoline -w
+#
+# Voir les logs :
+#   kubectl logs -f deployment/angular-frontend -n infoline
+#
+# Obtenir l'URL (NodePort) :
+#   kubectl get svc angular-service -n infoline
+#   # Puis accéder via http://<node-ip>:30080
+#
+# Obtenir l'URL (Ingress) :
+#   kubectl get ingress angular-ingress -n infoline
+#
+# Scaler (si besoin) :
+#   kubectl scale deployment angular-frontend --replicas=2 -n infoline
+#
+# Supprimer :
+#   kubectl delete -f angular-deploy.yaml
+#
+# ═══════════════════════════════════════════════════════════════════

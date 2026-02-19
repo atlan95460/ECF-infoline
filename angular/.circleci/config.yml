@@ -1,0 +1,19 @@
+version: 2.1
+jobs:
+  build_and_push:
+    docker:
+      - image: cimg/node:18.16.0
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker Image
+          command: |
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            # On utilise le Dockerfile que tu as déjà dans le dossier
+            docker build -t $DOCKER_USERNAME/angular-hello-world:latest .
+            docker push $DOCKER_USERNAME/angular-hello-world:latest
+workflows:
+  build_pipeline:
+    jobs:
+      - build_and_push

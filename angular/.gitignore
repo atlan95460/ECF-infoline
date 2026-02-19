@@ -1,0 +1,21 @@
+# Dépendances
+node_modules/
+.pnp
+.pnp.js
+
+# Dossiers de build
+dist/
+/www
+/.angular
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environnement / IDE
+.env
+.vscode/
+.idea/
+*.swp
+*.DS_Store
