@@ -9,10 +9,10 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY package.json package-lock.json* ./
 
-# Installer toutes les dépendances (y compris le CLI pour le build)
-RUN npm ci --quiet --legacy-peer-deps
+# Utilisation de 'install' au lieu de 'ci' pour synchroniser le lockfile automatiquement
+RUN npm install --quiet --legacy-peer-deps
 
-# Copier le reste du code (le dossier src, angular.json, etc.)
+# Copier le reste du code (NETTOYÉ : suppression du texte )
 COPY . .
 
 # Lancer le build de production
@@ -26,14 +26,13 @@ LABEL maintainer="lotfi.benhamou@gmail.com"
 # Nettoyer le dossier par défaut de Nginx
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copier les fichiers compilés
-# ATTENTION : Vérifie bien le nom du projet 'hello-world' dans ton angular.json
-COPY --from=build /app/dist/hello-world/browser /usr/share/nginx/html
+# Copier les fichiers compilés (Vérifié pour Angular v17+)
+COPY --from=build /app/dist/angular-hello-world/browser /usr/share/nginx/html
 
 # Copier ta config nginx personnalisée
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Activer gzip pour la performance
+# Activer gzip pour la performance (NETTOYÉ : suppression du texte )
 RUN echo "gzip on; gzip_types text/css application/javascript application/json image/svg+xml;" \
     >> /etc/nginx/conf.d/compression.conf
 
