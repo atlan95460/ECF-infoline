@@ -7,12 +7,15 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Build and Push Docker Image
+          name: Build and Push Angular Docker Image
           command: |
             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-            # On utilise le Dockerfile que tu as déjà dans le dossier
-            docker build -t $DOCKER_USERNAME/angular-hello-world:latest .
+            
+            # ATTENTION : On précise le chemin vers le dossier angular ici
+            docker build -t $DOCKER_USERNAME/angular-hello-world:latest ./angular
+            
             docker push $DOCKER_USERNAME/angular-hello-world:latest
+
 workflows:
   build_pipeline:
     jobs:
