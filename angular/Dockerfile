@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Installer toutes les dépendances (y compris le CLI pour le build)
-RUN npm ci --quiet
+RUN npm ci --quiet --legacy-peer-deps
 
 # Copier le reste du code (le dossier src, angular.json, etc.)
 COPY . .
